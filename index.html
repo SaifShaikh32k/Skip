@@ -197,6 +197,9 @@
   <div class="chip"><span class="filter-label">Picker</span>
     <select id="f-picker"><option value="ALL">All</option></select>
   </div>
+  <div class="chip"><span class="filter-label">Hour</span>
+    <select id="f-hour"><option value="ALL">All</option></select>
+  </div>
   <div class="chip" style="flex:1;">
     <input type="text" id="f-search" placeholder="Search FSN, bin, TL_ID, WID, destination…" />
   </div>
@@ -221,6 +224,11 @@
       <div class="panel-head"><div><div class="panel-eyebrow">Catalog</div><div class="panel-title">Top Verticals by Volume</div></div></div>
       <div class="panel-body"><div class="chart-box tall"><canvas id="chartVertical"></canvas></div></div>
     </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:12px;">
+    <div class="panel-head"><div><div class="panel-eyebrow">Throughput</div><div class="panel-title">Picks by Hour</div></div></div>
+    <div class="panel-body"><div class="chart-box"><canvas id="chartHourly"></canvas></div></div>
   </div>
 
   <div class="panel" style="margin-bottom:12px;">
@@ -281,7 +289,7 @@
     status: "loading",
     lastSync: null,
     err: "",
-    filters: { shift:"ALL", floor:"ALL", pathway:"ALL", irt:"ALL", vertical:"ALL", wid:"ALL", picker:"ALL", search:"" },
+    filters: { shift:"ALL", floor:"ALL", pathway:"ALL", irt:"ALL", vertical:"ALL", wid:"ALL", picker:"ALL", hour:"ALL", search:"" },
     activeCell: null,
     tablePage: 0
   };
@@ -343,6 +351,7 @@
       if (f.vertical !== "ALL" && r.cms_vertical !== f.vertical) return false;
       if (f.wid !== "ALL" && r.wid !== f.wid) return false;
       if (f.picker !== "ALL" && r.picklist_assigned_to !== f.picker) return false;
+      if (f.hour !== "ALL" && String(r.hour) !== f.hour) return false;
       if (state.activeCell) {
         var c = state.activeCell;
         if (r.floor !== c.floor || r.pathway !== c.pathway || r.aisle !== c.aisle) return false;
@@ -369,9 +378,16 @@
     fillSelect("f-vertical", uniqueVals(state.rows, "cms_vertical"), state.filters.vertical);
     fillSelect("f-wid", uniqueVals(state.rows, "wid"), state.filters.wid);
     fillSelect("f-picker", uniqueVals(state.rows, "picklist_assigned_to"), state.filters.picker);
+    fillSelect("f-hour", uniqueHours(state.rows), state.filters.hour, function(v){ return (v.length===1?"0"+v:v) + ":00"; });
   }
 
-  function fillSelect(id, values, current){
+  function uniqueHours(rows){
+    var set = {};
+    rows.forEach(function(r){ if (r.hour !== null && r.hour !== undefined && r.hour !== "") set[String(r.hour)] = true; });
+    return Object.keys(set).sort(function(a,b){ return Number(a) - Number(b); });
+  }
+
+  function fillSelect(id, values, current, labelFn){
     var el = document.getElementById(id);
     var existing = Array.prototype.slice.call(el.options).map(function(o){return o.value;});
     if (existing.length - 1 === values.length && values.every(function(v,i){return existing[i+1]===v;})) return;
@@ -381,7 +397,7 @@
     el.appendChild(allOpt);
     values.forEach(function(v){
       var o = document.createElement("option");
-      o.value = v; o.textContent = v;
+      o.value = v; o.textContent = labelFn ? labelFn(v) : v;
       el.appendChild(o);
     });
     el.value = current;
@@ -525,6 +541,24 @@
     return limit ? arr.slice(0, limit) : arr;
   }
 
+  function renderHourly(filtered){
+    var byHour = {};
+    filtered.forEach(function(r){
+      var h = Number(r.hour);
+      if (isNaN(h)) return;
+      byHour[h] = (byHour[h]||0) + 1;
+    });
+    var labels = [], data = [];
+    for (var h=0; h<24; h++){ labels.push(h); data.push(byHour[h]||0); }
+    var opts = baseChartOptions();
+    opts.plugins.legend.display = false;
+    opts.scales = {
+      x:{ ticks:{ color:COLORS.textFaint, font:{size:9.5} }, grid:{ color:COLORS.border, display:false } },
+      y:{ ticks:{ color:COLORS.textFaint, font:{size:9.5} }, grid:{ color:COLORS.border } }
+    };
+    upsertChart("chartHourly", { type:"bar", data:{ labels:labels, datasets:[{ data:data, backgroundColor:COLORS.amber, borderRadius:3, maxBarThickness:22 }] }, options:opts });
+  }
+
   function renderVertical(filtered){
     var data = countBy(filtered, "cms_vertical", 10);
     var opts = baseChartOptions();
@@ -574,7 +608,7 @@
   function renderFilterMeta(){
     document.getElementById("filterCount").textContent = state.rows.length.toLocaleString() + " rows loaded · " + getFiltered().length.toLocaleString() + " in view";
     var f = state.filters;
-    var anyActive = f.shift!=="ALL" || f.floor!=="ALL" || f.pathway!=="ALL" || f.irt!=="ALL" || f.vertical!=="ALL" || f.wid!=="ALL" || f.picker!=="ALL" || f.search || state.activeCell;
+    var anyActive = f.shift!=="ALL" || f.floor!=="ALL" || f.pathway!=="ALL" || f.irt!=="ALL" || f.vertical!=="ALL" || f.wid!=="ALL" || f.picker!=="ALL" || f.hour!=="ALL" || f.search || state.activeCell;
     document.getElementById("clearFiltersBtn").style.display = anyActive ? "inline-flex" : "none";
   }
 
@@ -584,6 +618,7 @@
     renderKpis(filtered);
     renderHive(filtered);
     renderVertical(filtered);
+    renderHourly(filtered);
     renderTable(filtered);
     renderFilterMeta();
   }
@@ -603,6 +638,7 @@
   bindFilter("f-vertical", "vertical");
   bindFilter("f-wid", "wid");
   bindFilter("f-picker", "picker");
+  bindFilter("f-hour", "hour");
 
   var searchTimer;
   document.getElementById("f-search").addEventListener("input", function(e){
@@ -616,11 +652,11 @@
   });
 
   document.getElementById("clearFiltersBtn").addEventListener("click", function(){
-    state.filters = { shift:"ALL", floor:"ALL", pathway:"ALL", irt:"ALL", vertical:"ALL", wid:"ALL", picker:"ALL", search:"" };
+    state.filters = { shift:"ALL", floor:"ALL", pathway:"ALL", irt:"ALL", vertical:"ALL", wid:"ALL", picker:"ALL", hour:"ALL", search:"" };
     state.activeCell = null;
     state.tablePage = 0;
     document.getElementById("f-search").value = "";
-    ["f-shift","f-floor","f-pathway","f-irt","f-vertical","f-wid","f-picker"].forEach(function(id){ document.getElementById(id).value = "ALL"; });
+    ["f-shift","f-floor","f-pathway","f-irt","f-vertical","f-wid","f-picker","f-hour"].forEach(function(id){ document.getElementById(id).value = "ALL"; });
     renderAll();
   });
 
