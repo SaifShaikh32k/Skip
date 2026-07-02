@@ -1,34 +1,52 @@
+HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warehouse Dashboard</title>
+    <title>Deep Warehouse Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800 pb-10">
 
     <div class="max-w-md mx-auto p-4 space-y-4">
+        
         <div class="bg-white p-4 rounded-xl shadow-sm">
-            <h1 class="text-xl font-bold mb-4">Operations Dashboard</h1>
-            <div class="grid grid-cols-2 gap-2">
+            <h1 class="text-xl font-bold mb-4 text-blue-900">Deep Operations Board</h1>
+            
+            <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase">Shift</label>
-                    <select id="shiftFilter" class="w-full mt-1 p-2 border rounded-lg bg-gray-50 text-sm">
+                    <label class="block text-xs font-bold text-gray-500 uppercase">Shift</label>
+                    <select id="shiftFilter" class="w-full mt-1 p-2 border rounded-lg bg-gray-50 text-sm filter-select">
                         <option value="All">All Shifts</option>
                         <option value="Day">Day</option>
                         <option value="Night">Night</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase">Status</label>
-                    <select id="statusFilter" class="w-full mt-1 p-2 border rounded-lg bg-gray-50 text-sm">
-                        <option value="All">All Statuses</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="sent_for_planning">Planning</option>
+                    <label class="block text-xs font-bold text-gray-500 uppercase">Vertical</label>
+                    <select id="verticalFilter" class="w-full mt-1 p-2 border rounded-lg bg-gray-50 text-sm filter-select">
+                        <option value="All">Loading...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase">Floor</label>
+                    <select id="floorFilter" class="w-full mt-1 p-2 border rounded-lg bg-gray-50 text-sm filter-select">
+                        <option value="All">Loading...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase">Pathway</label>
+                    <select id="pathwayFilter" class="w-full mt-1 p-2 border rounded-lg bg-gray-50 text-sm filter-select">
+                        <option value="All">Loading...</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-gray-500 uppercase">Aisle</label>
+                    <select id="aisleFilter" class="w-full mt-1 p-2 border rounded-lg bg-gray-50 text-sm filter-select">
+                        <option value="All">Loading...</option>
                     </select>
                 </div>
             </div>
@@ -36,13 +54,23 @@
 
         <div class="grid grid-cols-2 gap-4">
             <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
-                <p class="text-xs text-gray-500 uppercase font-semibold">Total Items</p>
-                <p id="kpi-total" class="text-2xl font-bold">0</p>
+                <p class="text-xs text-gray-500 uppercase font-bold">Rows (Filtered)</p>
+                <p id="kpi-total" class="text-2xl font-black text-gray-800">0</p>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
-                <p class="text-xs text-gray-500 uppercase font-semibold">Total Qty</p>
-                <p id="kpi-qty" class="text-2xl font-bold">0</p>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-emerald-500">
+                <p class="text-xs text-gray-500 uppercase font-bold">Total Qty</p>
+                <p id="kpi-qty" class="text-2xl font-black text-gray-800">0</p>
             </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm">
+            <h2 class="text-sm font-bold text-gray-700 mb-2">Volume by WID</h2>
+            <canvas id="widChart" height="200"></canvas>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm">
+            <h2 class="text-sm font-bold text-gray-700 mb-2">Tasks by Assigned Picker</h2>
+            <canvas id="assignedChart" height="200"></canvas>
         </div>
 
         <div class="bg-white p-4 rounded-xl shadow-sm">
@@ -51,15 +79,15 @@
         </div>
 
         <div class="bg-white p-4 rounded-xl shadow-sm overflow-hidden">
-            <h2 class="text-sm font-bold text-gray-700 mb-2">Recent Records</h2>
+            <h2 class="text-sm font-bold text-gray-700 mb-2">Recent Filtered Records</h2>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
                         <tr class="bg-gray-50 text-gray-600">
-                            <th class="p-2 border-b">TL_ID</th>
+                            <th class="p-2 border-b">Assigned To</th>
+                            <th class="p-2 border-b">WID</th>
+                            <th class="p-2 border-b">Loc (F-P-A)</th>
                             <th class="p-2 border-b">Vertical</th>
-                            <th class="p-2 border-b">Status</th>
-                            <th class="p-2 border-b">Shift</th>
                             <th class="p-2 border-b">Qty</th>
                         </tr>
                     </thead>
@@ -76,40 +104,74 @@
         const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 
         let rawData = [];
-        let myChart = null;
+        
+        // Chart instances
+        let widChartInstance = null;
+        let assignedChartInstance = null;
+        let verticalChartInstance = null;
 
         // Initialize App
         function init() {
             Papa.parse(CSV_URL, {
                 download: true,
                 header: true,
+                skipEmptyLines: true,
                 complete: function(results) {
-                    rawData = results.data.filter(row => row.TL_ID); // Filter empty rows
+                    rawData = results.data.filter(row => row.TL_ID); // Ensure row is valid
+                    populateDynamicDropdowns();
                     updateDashboard();
                 }
             });
 
-            // Event Listeners for Dropdowns
-            document.getElementById('shiftFilter').addEventListener('change', updateDashboard);
-            document.getElementById('statusFilter').addEventListener('change', updateDashboard);
+            // Attach event listeners to all select dropdowns
+            document.querySelectorAll('.filter-select').forEach(select => {
+                select.addEventListener('change', updateDashboard);
+            });
+        }
+
+        // Auto-extract unique values for the filters
+        function populateDynamicDropdowns() {
+            const getUnique = (key) => ['All', ...new Set(rawData.map(item => item[key]).filter(Boolean))].sort();
+
+            const populateSelect = (id, options) => {
+                const select = document.getElementById(id);
+                select.innerHTML = '';
+                options.forEach(opt => {
+                    const label = opt === 'All' ? `All` : opt;
+                    select.innerHTML += `<option value="${opt}">${label}</option>`;
+                });
+            };
+
+            populateSelect('verticalFilter', getUnique('cms_vertical'));
+            populateSelect('floorFilter', getUnique('Floor'));
+            populateSelect('pathwayFilter', getUnique('Pathway'));
+            populateSelect('aisleFilter', getUnique('Aisle'));
         }
 
         function updateDashboard() {
-            const shiftFilter = document.getElementById('shiftFilter').value;
-            const statusFilter = document.getElementById('statusFilter').value;
+            // Get current filter values
+            const filters = {
+                Shift: document.getElementById('shiftFilter').value,
+                cms_vertical: document.getElementById('verticalFilter').value,
+                Floor: document.getElementById('floorFilter').value,
+                Pathway: document.getElementById('pathwayFilter').value,
+                Aisle: document.getElementById('aisleFilter').value
+            };
 
-            // Apply Filters
+            // Apply Filters to data
             const filteredData = rawData.filter(row => {
-                const matchShift = shiftFilter === 'All' || row.Shift === shiftFilter;
-                // Note: Checking both reservation status and picklist status based on your sample
-                const matchStatus = statusFilter === 'All' || 
-                                    row.reservation_item_status === statusFilter || 
-                                    row.picklist_status === statusFilter;
-                return matchShift && matchStatus;
+                return Object.keys(filters).every(key => {
+                    return filters[key] === 'All' || row[key] === filters[key];
+                });
             });
 
             updateKPIs(filteredData);
-            updateChart(filteredData);
+            
+            // Update the three charts
+            widChartInstance = renderChart('widChart', widChartInstance, filteredData, 'wid', '#8b5cf6', 'WID');
+            assignedChartInstance = renderChart('assignedChart', assignedChartInstance, filteredData, 'picklist_assigned_to', '#f97316', 'Picker', true);
+            verticalChartInstance = renderChart('verticalChart', verticalChartInstance, filteredData, 'cms_vertical', '#3b82f6', 'Vertical');
+            
             updateTable(filteredData);
         }
 
@@ -119,25 +181,32 @@
             document.getElementById('kpi-qty').innerText = totalQty;
         }
 
-        function updateChart(data) {
-            const verticalCounts = {};
+        // Generic function to render bar charts
+        function renderChart(canvasId, chartInstance, data, dataKey, color, labelName, normalizeUpper = false) {
+            const counts = {};
             data.forEach(row => {
-                const v = row.cms_vertical || 'Unknown';
-                verticalCounts[v] = (verticalCounts[v] || 0) + 1;
+                let val = row[dataKey] || 'Unknown';
+                // Group CA.123 and ca.123 together
+                if (normalizeUpper) val = val.toString().toUpperCase(); 
+                counts[val] = (counts[val] || 0) + 1;
             });
 
-            const ctx = document.getElementById('verticalChart').getContext('2d');
+            // Sort data by volume descending
+            const sortedKeys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+            const sortedValues = sortedKeys.map(k => counts[k]);
+
+            const ctx = document.getElementById(canvasId).getContext('2d');
             
-            if (myChart) myChart.destroy(); // Clear old chart
+            if (chartInstance) chartInstance.destroy();
             
-            myChart = new Chart(ctx, {
+            return new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: Object.keys(verticalCounts),
+                    labels: sortedKeys,
                     datasets: [{
-                        label: 'Count',
-                        data: Object.values(verticalCounts),
-                        backgroundColor: '#3b82f6',
+                        label: `Count by ${labelName}`,
+                        data: sortedValues,
+                        backgroundColor: color,
                         borderRadius: 4
                     }]
                 },
@@ -153,19 +222,20 @@
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
             
-            // Show max 10 rows for mobile performance
-            const displayData = data.slice(0, 10); 
+            // Show max 15 rows for mobile performance
+            const displayData = data.slice(0, 15); 
             
             displayData.forEach(row => {
                 const tr = document.createElement('tr');
+                const picker = (row.picklist_assigned_to || '').toUpperCase();
+                const loc = `${row.Floor || '-'}/${row.Pathway || '-'}/${row.Aisle || '-'}`;
+                
                 tr.innerHTML = `
-                    <td class="p-2 border-b">${row.TL_ID.substring(0, 8)}...</td>
+                    <td class="p-2 border-b font-medium text-gray-700">${picker}</td>
+                    <td class="p-2 border-b text-blue-600">${row.wid || '-'}</td>
+                    <td class="p-2 border-b text-gray-500">${loc}</td>
                     <td class="p-2 border-b">${row.cms_vertical}</td>
-                    <td class="p-2 border-b">
-                        <span class="px-2 py-1 bg-gray-100 rounded text-[10px]">${row.reservation_item_status || row.picklist_status}</span>
-                    </td>
-                    <td class="p-2 border-b">${row.Shift}</td>
-                    <td class="p-2 border-b">${row.quantity || row.Qty}</td>
+                    <td class="p-2 border-b font-bold">${row.quantity || row.Qty}</td>
                 `;
                 tbody.appendChild(tr);
             });
