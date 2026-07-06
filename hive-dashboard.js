@@ -283,6 +283,27 @@
     return limit ? arr.slice(0, limit) : arr;
   }
 
+  function renderHourly(filtered){
+    var byHour = {};
+    filtered.forEach(function(r){
+      var h = Number(r.hour);
+      if (isNaN(h)) return;
+      byHour[h] = (byHour[h]||0) + 1;
+    });
+    var labels = [], data = [];
+    for (var h=0; h<24; h++){ labels.push((h<10?"0"+h:h)+":00"); data.push(byHour[h]||0); }
+    var opts = baseChartOptions();
+    opts.interaction = { mode:"index", intersect:false };
+    opts.scales = {
+      x:{ ticks:{ color:COLORS.textFaint, font:{size:9.5}, maxRotation:0, autoSkip:true, maxTicksLimit:12 }, grid:{ display:false } },
+      y:{ ticks:{ color:COLORS.textFaint, font:{size:9.5} }, grid:{ color:COLORS.border }, beginAtZero:true }
+    };
+    upsertChart("chartHourly", { type:"line", data:{ labels:labels, datasets:[{
+      data:data, borderColor:COLORS.amber, backgroundColor:"rgba(242,169,59,0.14)",
+      fill:true, tension:0.35, pointRadius:2, pointBackgroundColor:COLORS.amber, borderWidth:2
+    }] }, options:opts });
+  }
+
   function renderTopWid(filtered){
     var data = countBy(filtered, "wid", 10);
     var opts = baseChartOptions();
@@ -356,6 +377,7 @@
     safe(function(){ renderFilterMeta(); });
     safe(function(){ renderTopWid(filtered); });
     safe(function(){ renderTopPicker(filtered); });
+    safe(function(){ renderHourly(filtered); });
   }
 
   function safe(fn){
