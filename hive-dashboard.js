@@ -425,4 +425,3 @@
   fetchData();
   autoTimer = setInterval(fetchData, REFRESH_MS);
 })();
-
